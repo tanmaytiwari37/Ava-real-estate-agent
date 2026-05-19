@@ -71,3 +71,7 @@ GEMINI.md
 .github/copilot-instructions.md
 .github/personal-instructions.md
 .github/instructions/
+
+
+livekit.toml
+uv.lock
