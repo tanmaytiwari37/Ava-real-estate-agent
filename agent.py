@@ -54,6 +54,11 @@ class Ava(Agent):
                 "When the user is ready to act, offer to schedule a site visit "
                 "or connect them with a human agent."
             ),
+            tools=[
+                RealEstateCRMTools().get_available_properties,
+                RealEstateCRMTools().capture_client_lead,
+                RealEstateCRMTools().book_viewing_appointment,
+            ]
         )
 
 
