@@ -1,18 +1,17 @@
-# Python virtual environment
+# Virtual Environments
 .venv/
+venv/
+env/
 __pycache__/
 *.pyc
+.uv/
 
-# Environment variables (SECRETS)
+# Environment Variables & Secrets
 .env
+.env.local
+.env.example
 
-# IDE
+# IDE & OS files
 .vscode/
-.idea/
-
-# OS
 .DS_Store
 Thumbs.db
-
-# Logs
-*.log

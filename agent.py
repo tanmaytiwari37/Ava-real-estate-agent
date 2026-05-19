@@ -8,6 +8,7 @@ from livekit import agents
 from livekit.agents import Agent, AgentServer, AgentSession, JobContext, room_io
 from livekit.plugins import noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
+from tools import RealEstateCRMTools
 
 load_dotenv()
 
@@ -68,6 +69,7 @@ async def entrypoint(ctx: JobContext):
         vad=vad,
         turn_detection=MultilingualModel(),
         preemptive_generation=True,
+        fnc_ctx=RealEstateCRMTools(),
     )
 
     await session.start(
