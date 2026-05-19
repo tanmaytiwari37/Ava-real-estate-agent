@@ -2,7 +2,7 @@ import requests
 from typing import Optional
 from livekit.agents import function_tool, RunContext
 
-BASE_URL = "http://127.0.0.1:8000"
+BASE_URL = "https://ava-p7m1.onrender.com"
 
 class RealEstateCRMTools:
     """
