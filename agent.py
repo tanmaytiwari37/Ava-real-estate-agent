@@ -69,7 +69,6 @@ async def entrypoint(ctx: JobContext):
         vad=vad,
         turn_detection=MultilingualModel(),
         preemptive_generation=True,
-        fnc_ctx=RealEstateCRMTools(),
     )
 
     await session.start(
@@ -82,7 +81,6 @@ async def entrypoint(ctx: JobContext):
         ),
     )
 
-    # Make Ava speak first — silence on connect feels broken
     await session.generate_reply(
         instructions=(
             "Greet the user warmly as Ava. Introduce yourself briefly as a real estate "
