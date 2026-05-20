@@ -5,40 +5,79 @@ from livekit.agents import function_tool, RunContext
 
 BASE_URL = "https://ava-p7m1.onrender.com"
 
+
 class RealEstateCRMTools:
 
     @function_tool(
-        description="Retrieves available real estate listings. Call this when the user asks what properties, houses, or apartments are available."
+        description=(
+            "Retrieves real estate listings from the CRM filtered by the user's preferences. "
+            "Call this after gathering the user's city, budget, bedrooms, and property type. "
+            "All parameters are optional — pass only what the user has specified."
+        )
     )
-    async def get_available_properties(self, ctx: RunContext) -> str:
+    async def get_available_properties(
+        self,
+        ctx: RunContext,
+        city: Optional[str] = None,
+        max_price_inr: Optional[float] = None,
+        min_bedrooms: Optional[int] = None,
+        property_type: Optional[str] = None,
+    ) -> str:
+        # Build query params from whatever the user mentioned
+        params = {}
+        if city:
+            params["city"] = city
+        if max_price_inr:
+            params["max_price"] = max_price_inr
+        if min_bedrooms:
+            params["min_bedrooms"] = min_bedrooms
+        if property_type:
+            params["property_type"] = property_type
+
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(
-                    f"{BASE_URL}/properties", timeout=aiohttp.ClientTimeout(total=15)
+                    f"{BASE_URL}/properties",
+                    params=params,
+                    timeout=aiohttp.ClientTimeout(total=15),
                 ) as resp:
                     if resp.status == 200:
                         props = await resp.json()
                         if not props:
-                            return "There are no properties listed right now."
-                        # Format for speech — no bullet points or raw dicts
+                            return (
+                                "I couldn't find any properties matching those criteria. "
+                                "Would you like to broaden the search, maybe a higher budget or nearby city?"
+                            )
                         lines = []
-                        for p in props[:5]:  # cap at 5 to avoid Ava reading a wall of text
+                        for p in props:
+                            price_cr = p.get("price_inr", 0) / 10_000_000
                             lines.append(
-                                f"{p.get('title', 'A property')} in {p.get('city', 'an unknown city')}, "
-                                f"priced at {p.get('price', 'price not listed')}."
+                                f"{p.get('property_type', 'Property')} in {p.get('district', '')}, "
+                                f"{p.get('city', '')}: {p.get('bedrooms', '?')} BHK, "
+                                f"{p.get('built_up_area_sqft', '?')} sqft, "
+                                f"priced at {price_cr:.1f} crore rupees."
                             )
                         return " ".join(lines)
                     return f"Could not fetch listings. Server returned status {resp.status}."
+
         except asyncio.TimeoutError:
             return "The property database is taking too long to respond. Please try again shortly."
         except Exception as e:
             return f"Error fetching properties: {str(e)}"
 
     @function_tool(
-        description="Registers a new client lead in the CRM. Use when the user provides their name, email, phone, and budget."
+        description=(
+            "Saves a new client lead into the CRM. "
+            "Call this once the user has shared their name, email, phone, and budget."
+        )
     )
     async def capture_client_lead(
-        self, ctx: RunContext, name: str, email: str, phone: str, budget: float
+        self,
+        ctx: RunContext,
+        name: str,
+        email: str,
+        phone: str,
+        budget: float,
     ) -> str:
         payload = {"name": name, "email": email, "phone": phone, "budget": budget}
         try:
@@ -46,18 +85,21 @@ class RealEstateCRMTools:
                 async with session.post(
                     f"{BASE_URL}/leads",
                     json=payload,
-                    timeout=aiohttp.ClientTimeout(total=15)
+                    timeout=aiohttp.ClientTimeout(total=15),
                 ) as resp:
                     data = await resp.json()
                     if resp.status in (200, 201):
                         lead_id = data.get("id", "unknown")
-                        return f"Lead captured successfully. Lead ID is {lead_id}."
-                    return f"Failed to save lead. Server said: {data}"
+                        return f"Your details have been saved. Your lead ID is {lead_id}."
+                    return f"Failed to save your details. Server said: {data}"
         except Exception as e:
             return f"Error capturing lead: {str(e)}"
 
     @function_tool(
-        description="Schedules a property viewing appointment. Requires a valid lead_id and property_id."
+        description=(
+            "Schedules a property viewing appointment in the CRM. "
+            "Requires a valid lead_id from capture_client_lead and a property_id from get_available_properties."
+        )
     )
     async def book_viewing_appointment(
         self,
@@ -78,11 +120,11 @@ class RealEstateCRMTools:
                 async with session.post(
                     f"{BASE_URL}/appointments",
                     json=payload,
-                    timeout=aiohttp.ClientTimeout(total=15)
+                    timeout=aiohttp.ClientTimeout(total=15),
                 ) as resp:
                     data = await resp.json()
                     if resp.status in (200, 201):
-                        return f"Appointment booked successfully for {appointment_time}."
-                    return f"Could not book appointment. Server responded: {data}"
+                        return f"Appointment confirmed for {appointment_time}. See you there!"
+                    return f"Could not book the appointment. Server responded: {data}"
         except Exception as e:
             return f"Error booking appointment: {str(e)}"
