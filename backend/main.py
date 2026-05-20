@@ -12,7 +12,7 @@ app = FastAPI(title="Ava Real Estate Voice Agent API")
 # ==========================================
 # 💾 DATABASE SETUP
 # ==========================================
-DATABASE_URL = os.environ.get("NEON_DATABASE_URL")
+DATABASE_URL = os.environ.get("DATABASE_URL")
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
