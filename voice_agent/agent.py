@@ -1,25 +1,21 @@
-"""
-Ava — Real Estate Voice Agent
-"""
-
-import logging
+import os
 import asyncio
 import aiohttp
 from dotenv import load_dotenv
 from livekit import agents
 from livekit.agents import Agent, AgentServer, AgentSession, JobContext, room_io
 from livekit.plugins import noise_cancellation, silero
-from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from tools import RealEstateCRMTools
 
-load_dotenv()
+current_dir = os.path.dirname(__file__)
+load_dotenv(os.path.join(current_dir, ".env"), override=True)
 
 vad = silero.VAD.load()
-logger = logging.getLogger(__name__)
-
+crm_tools = RealEstateCRMTools()
+server = AgentServer()
 
 class Ava(Agent):
-    def __init__(self) -> None:
+    def __init__(self):
         super().__init__(
             instructions=(
                 # === Identity ===
@@ -41,6 +37,7 @@ class Ava(Agent):
                 "4. Bedrooms / BHK\n"
                 "5. Budget range\n"
                 "6. Timeline (immediate, 3 months, exploring)\n\n"
+
                 "Skip a question if the user already mentioned that detail. "
                 "After all 6 are gathered, summarize back what you understood and "
                 "confirm before recommending properties.\n\n"
@@ -57,29 +54,33 @@ class Ava(Agent):
                 "or connect them with a human agent."
             ),
             tools=[
-                RealEstateCRMTools().get_available_properties,
-                RealEstateCRMTools().capture_client_lead,
-                RealEstateCRMTools().book_viewing_appointment,
-            ]
+                crm_tools.get_available_properties,
+                crm_tools.capture_client_lead,
+                crm_tools.book_viewing_appointment,
+            ],
         )
 
-
-server = AgentServer()
+async def warm_backend():
+    try:
+        async with aiohttp.ClientSession() as http_session:
+            async with http_session.get("https://ava-p7m1.onrender.com/properties", timeout=5) as resp:
+                await resp.text()
+    except Exception:
+        pass
 
 @server.rtc_session()
 async def entrypoint(ctx: JobContext):
-    turn_detector = MultilingualModel(min_endpointing_delay=0.5)
-
+    asyncio.create_task(warm_backend())
+    
     session = AgentSession(
-        stt="assemblyai/universal-streaming:en",
-        llm="openai/gpt-4.1-mini",
+        stt="deepgram/nova-2",
+        llm="openai/gpt-4o-mini",
         tts="cartesia/sonic-3:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",
         vad=vad,
-        turn_detection=turn_detector,
+        turn_handling={"endpointing": {"mode": "fixed", "min_delay": 0.3}},
         preemptive_generation=True,
-        allow_fillers=True, 
     )
-
+    
     await session.start(
         agent=Ava(),
         room=ctx.room,
@@ -89,25 +90,10 @@ async def entrypoint(ctx: JobContext):
             ),
         ),
     )
-
-    async def wake_backend():
-        try:
-            async with aiohttp.ClientSession() as client:
-                async with client.get("https://ava-p7m1.onrender.com/properties") as resp:
-                    await resp.json()
-        except Exception as e:
-            logger.error(f"Pre-warm ping failed: {e}")
-
-    asyncio.create_task(wake_backend())
-
+    
     await session.generate_reply(
-        instructions=(
-            "Greet the user warmly as Ava. Introduce yourself briefly as a real estate "
-            "assistant and ask how you can help today. Keep it under 2 sentences."
-        )
+        instructions="Briefly greet the user as Ava and ask how you can help."
     )
 
-
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO)
     agents.cli.run_app(server)
