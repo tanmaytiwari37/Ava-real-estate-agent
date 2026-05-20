@@ -3,12 +3,14 @@ Ava — Real Estate Voice Agent
 """
 
 import logging
+import asyncio
+import aiohttp
 from dotenv import load_dotenv
 from livekit import agents
 from livekit.agents import Agent, AgentServer, AgentSession, JobContext, room_io
 from livekit.plugins import noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
-from tools import RealEstateCRMTools
+from voice_agent.tools import RealEstateCRMTools
 
 load_dotenv()
 
@@ -62,18 +64,20 @@ class Ava(Agent):
         )
 
 
-
 server = AgentServer()
 
 @server.rtc_session()
 async def entrypoint(ctx: JobContext):
+    turn_detector = MultilingualModel(min_endpointing_delay=0.5)
+
     session = AgentSession(
         stt="assemblyai/universal-streaming:en",
         llm="openai/gpt-4.1-mini",
         tts="cartesia/sonic-3:9626c31c-bec5-4cca-baa8-f8ba9e84c8bc",
         vad=vad,
-        turn_detection=MultilingualModel(),
+        turn_detection=turn_detector,
         preemptive_generation=True,
+        allow_fillers=True, 
     )
 
     await session.start(
@@ -86,6 +90,16 @@ async def entrypoint(ctx: JobContext):
         ),
     )
 
+    async def wake_backend():
+        try:
+            async with aiohttp.ClientSession() as client:
+                async with client.get("https://ava-p7m1.onrender.com/properties") as resp:
+                    await resp.json()
+        except Exception as e:
+            logger.error(f"Pre-warm ping failed: {e}")
+
+    asyncio.create_task(wake_backend())
+
     await session.generate_reply(
         instructions=(
             "Greet the user warmly as Ava. Introduce yourself briefly as a real estate "
@@ -94,10 +108,6 @@ async def entrypoint(ctx: JobContext):
     )
 
 
-# ───────────────────────────────────────────────
-# SECTION 4: CLI runner
-# ───────────────────────────────────────────────
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     agents.cli.run_app(server)
-    
