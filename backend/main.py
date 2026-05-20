@@ -31,7 +31,7 @@ db_appointments = {}
 # 📋 PYDANTIC SCHEMAS
 # ==========================================
 class PropertyResponse(BaseModel):
-    property_id: int
+    property_id: str
     city: str
     district: str
     property_type: str
