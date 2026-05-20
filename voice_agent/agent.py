@@ -10,7 +10,7 @@ from livekit import agents
 from livekit.agents import Agent, AgentServer, AgentSession, JobContext, room_io
 from livekit.plugins import noise_cancellation, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
-from voice_agent.tools import RealEstateCRMTools
+from tools import RealEstateCRMTools
 
 load_dotenv()
 
