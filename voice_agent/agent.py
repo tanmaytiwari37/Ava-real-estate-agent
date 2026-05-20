@@ -7,13 +7,17 @@ from livekit.agents import Agent, AgentServer, AgentSession, JobContext, room_io
 from livekit.plugins import noise_cancellation, silero
 from tools import RealEstateCRMTools
 
+# ── Environment ────────────────────────────────────────────────────────────────
 current_dir = os.path.dirname(__file__)
 load_dotenv(os.path.join(current_dir, ".env"), override=True)
 
+# ── Shared singletons ──────────────────────────────────────────────────────────
 vad = silero.VAD.load()
 crm_tools = RealEstateCRMTools()
 server = AgentServer()
 
+
+# ── Agent ──────────────────────────────────────────────────────────────────────
 class Ava(Agent):
     def __init__(self):
         super().__init__(
@@ -60,18 +64,30 @@ class Ava(Agent):
             ],
         )
 
+
+# ── Backend warm-up ────────────────────────────────────────────────────────────
 async def warm_backend():
+    """
+    Pings the Render backend on session start to avoid cold-start latency
+    during the first real tool call. Silently swallows all errors.
+    """
     try:
         async with aiohttp.ClientSession() as http_session:
-            async with http_session.get("https://ava-p7m1.onrender.com/properties", timeout=5) as resp:
+            async with http_session.get(
+                "https://ava-p7m1.onrender.com/properties",
+                timeout=aiohttp.ClientTimeout(total=30),
+            ) as resp:
                 await resp.text()
     except Exception:
         pass
 
+
+# ── Session entrypoint ─────────────────────────────────────────────────────────
 @server.rtc_session()
 async def entrypoint(ctx: JobContext):
+    # Fire-and-forget warm-up — doesn't block session start
     asyncio.create_task(warm_backend())
-    
+
     session = AgentSession(
         stt="deepgram/nova-2",
         llm="openai/gpt-4o-mini",
@@ -80,7 +96,7 @@ async def entrypoint(ctx: JobContext):
         turn_handling={"endpointing": {"mode": "fixed", "min_delay": 0.3}},
         preemptive_generation=True,
     )
-    
+
     await session.start(
         agent=Ava(),
         room=ctx.room,
@@ -90,10 +106,12 @@ async def entrypoint(ctx: JobContext):
             ),
         ),
     )
-    
+
     await session.generate_reply(
         instructions="Briefly greet the user as Ava and ask how you can help."
     )
 
+
+# ── Entry ──────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
     agents.cli.run_app(server)
