@@ -4,5 +4,5 @@ sqlalchemy
 psycopg2-binary
 python-dotenv
 livekit-agents[silero,turn-detector]~=1.3
-livekit-plugins-noise-cancellation~=0.2
 livekit-api
+

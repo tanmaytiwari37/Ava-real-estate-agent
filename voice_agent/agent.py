@@ -4,7 +4,7 @@ import aiohttp
 from dotenv import load_dotenv
 from livekit import agents
 from livekit.agents import Agent, AgentServer, AgentSession, JobContext, room_io
-from livekit.plugins import noise_cancellation, silero
+from livekit.plugins import silero
 from tools import RealEstateCRMTools
 
 # ── Environment ────────────────────────────────────────────────────────────────
@@ -130,11 +130,6 @@ async def entrypoint(ctx: JobContext):
     await session.start(
         agent=Ava(),
         room=ctx.room,
-        room_options=room_io.RoomOptions(
-            audio_input=room_io.AudioInputOptions(
-                noise_cancellation=noise_cancellation.BVC(),
-            ),
-        ),
     )
 
     await session.generate_reply(
