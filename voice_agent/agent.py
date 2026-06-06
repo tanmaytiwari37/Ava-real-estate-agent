@@ -3,7 +3,7 @@ import asyncio
 import aiohttp
 from dotenv import load_dotenv
 from livekit import agents
-from livekit.agents import Agent, AgentServer, AgentSession, JobContext, room_io
+from livekit.agents import Agent, AgentSession, JobContext, WorkerOptions, room_io
 from livekit.plugins import silero
 from tools import RealEstateCRMTools
 
@@ -14,10 +14,7 @@ load_dotenv(os.path.join(current_dir, ".env"), override=True)
 # ── Shared singletons ──────────────────────────────────────────────────────────
 vad = silero.VAD.load()
 crm_tools = RealEstateCRMTools()
-server = AgentServer(
-    num_idle_processes=0,
-    load_threshold=999999.0,
-)
+# Single-process mode runner. No AgentServer needed.
 
 
 # ── Agent ──────────────────────────────────────────────────────────────────────
@@ -113,8 +110,9 @@ async def warm_backend():
 
 
 # ── Session entrypoint ─────────────────────────────────────────────────────────
-@server.rtc_session()
 async def entrypoint(ctx: JobContext):
+    # Connect the agent to the room
+    await ctx.connect()
     # Fire-and-forget warm-up — doesn't block session start
     asyncio.create_task(warm_backend())
 
@@ -139,4 +137,4 @@ async def entrypoint(ctx: JobContext):
 
 # ── Entry ──────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    agents.cli.run_app(server)
+    agents.cli.run_app(agents.WorkerOptions(entrypoint_fnc=entrypoint))
