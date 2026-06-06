@@ -15,8 +15,8 @@ load_dotenv(os.path.join(current_dir, ".env"), override=True)
 vad = silero.VAD.load()
 crm_tools = RealEstateCRMTools()
 server = AgentServer(
-    num_idle_processes=1,
-    load_threshold=9999.0,
+    num_idle_processes=0,
+    load_threshold=99999.0,
 )
 
 
