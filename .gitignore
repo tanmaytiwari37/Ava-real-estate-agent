@@ -10,6 +10,7 @@ __pycache__/
 .env
 .env.local
 .env.example
+voice_agent/.env
 
 # IDE & OS files
 .vscode/
@@ -17,3 +18,4 @@ __pycache__/
 Thumbs.db
 
 Indian_Real_Estate_Market_Dataset.csv
+

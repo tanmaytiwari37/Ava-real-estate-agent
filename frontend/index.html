@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ava Voice CRM - Premium Real Estate Dashboard</title>
+  <!-- Google Fonts: Outfit & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- CSS Styles -->
+  <link rel="stylesheet" href="style.css">
+  <!-- LiveKit Client SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/livekit-client@2.0.7/dist/livekit-client.umd.min.js"></script>
+</head>
+<body>
+  <div class="bg-gradient-glow"></div>
+  
+  <div class="dashboard-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="logo">
+        <span class="icon">💎</span>
+        <h1>Ava <span class="accent">Voice CRM</span></h1>
+      </div>
+      <div class="system-status">
+        <span class="pulse-dot active"></span>
+        <span id="backend-status-text">Connecting to CRM API...</span>
+      </div>
+    </header>
+
+    <!-- Main Layout -->
+    <main class="main-content">
+      
+      <!-- Left Column: Voice Assistant Panel -->
+      <section class="assistant-panel glass-card">
+        <div class="card-header">
+          <h2>Voice Agent Interaction</h2>
+          <span class="badge" id="call-status">Disconnected</span>
+        </div>
+        
+        <!-- Interactive Orb Visualizer -->
+        <div class="orb-container">
+          <div class="orb-ring ring-1"></div>
+          <div class="orb-ring ring-2"></div>
+          <div class="orb-ring ring-3"></div>
+          <div class="ava-orb" id="visualizer-orb">
+            <span class="orb-avatar">🎙️</span>
+          </div>
+          <div class="voice-state-text" id="voice-state">Ava is resting. Click call to wake her up.</div>
+        </div>
+
+        <!-- Call Controls -->
+        <div class="controls-panel">
+          <div class="control-row">
+            <button id="call-btn" class="btn btn-primary">
+              <span class="btn-icon">📞</span>
+              <span id="call-btn-text">Connect to Ava</span>
+            </button>
+            <button id="mute-btn" class="btn btn-secondary" disabled>
+              <span class="btn-icon" id="mute-btn-icon">🎤</span>
+              <span id="mute-btn-text">Mute Mic</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Connection Settings (Collapsible) -->
+        <details class="settings-details">
+          <summary>Connection Configuration</summary>
+          <div class="settings-content">
+            <div class="input-group">
+              <label for="backend-url">CRM API Server URL</label>
+              <input type="text" id="backend-url" value="http://127.0.0.1:8000" placeholder="e.g. http://localhost:8000">
+            </div>
+            <div class="input-group">
+              <label for="room-name">LiveKit Room Name</label>
+              <input type="text" id="room-name" value="ava-room" placeholder="e.g. ava-room">
+            </div>
+            <p class="settings-note">Note: Ensure your local FastAPI backend and LiveKit agent are running.</p>
+          </div>
+        </details>
+      </section>
+
+      <!-- Right Column: CRM Live Database Feed -->
+      <section class="database-panel glass-card">
+        <div class="card-header flex-header">
+          <h2>CRM Live Feed</h2>
+          <div class="tabs">
+            <button class="tab-btn active" data-tab="leads">Leads</button>
+            <button class="tab-btn" data-tab="appointments">Appointments</button>
+          </div>
+        </div>
+
+        <!-- Tab Contents -->
+        <div class="tab-content active" id="tab-leads">
+          <div class="list-container" id="leads-list">
+            <div class="empty-state">
+              <span class="empty-icon">👥</span>
+              <p>No leads captured yet.</p>
+              <p class="sub">Speak to Ava to save a new lead.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-content" id="tab-appointments">
+          <div class="list-container" id="appointments-list">
+            <div class="empty-state">
+              <span class="empty-icon">📅</span>
+              <p>No appointments booked yet.</p>
+              <p class="sub">Ask Ava to schedule a viewing visit.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+    
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>Ava AI Assistant powered by LiveKit, Deepgram, OpenAI & Cartesia. Developed for Indian Property CRM.</p>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

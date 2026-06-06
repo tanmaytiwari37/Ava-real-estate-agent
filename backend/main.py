@@ -3,15 +3,31 @@ from datetime import datetime
 from uuid import UUID, uuid4
 from typing import Optional
 from fastapi import FastAPI, Depends, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
+from dotenv import load_dotenv
+from livekit.api import AccessToken, VideoGrants
+
+# ==========================================
+# 💾 DATABASE SETUP & dotenv loading
+# ==========================================
+# Load environment variables (from local or voice_agent directory)
+load_dotenv(override=True)
+load_dotenv("../voice_agent/.env", override=True)
 
 app = FastAPI(title="Ava Real Estate Voice Agent API")
 
-# ==========================================
-# 💾 DATABASE SETUP
-# ==========================================
+# Enable CORS for frontend integration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
 engine = create_engine(DATABASE_URL)
@@ -37,20 +53,22 @@ class PropertyResponse(BaseModel):
     property_type: str
     built_up_area_sqft: float
     price_inr: float
+    monthly_rental_estimate_inr: float
     bedrooms: int
+    status: str
 
 class LeadCreate(BaseModel):
     name: str
-    email: str
     phone: str
-    budget: float
+    email: Optional[str] = None
+    budget: Optional[float] = None
 
 class Lead(BaseModel):
     id: UUID = Field(default_factory=uuid4)
     name: str
-    email: str
     phone: str
-    budget: float
+    email: Optional[str] = None
+    budget: Optional[float] = None
 
 class AppointmentCreate(BaseModel):
     lead_id: UUID
@@ -69,18 +87,59 @@ class Appointment(BaseModel):
 # ==========================================
 # 🛣️ FASTAPI ROUTES
 # ==========================================
+@app.get("/")
+def read_root():
+    return {
+        "status": "online",
+        "message": "Ava Real Estate CRM API is running successfully!",
+        "docs_url": "http://127.0.0.1:8000/docs",
+        "endpoints": {
+            "token": "/token",
+            "properties": "/properties",
+            "leads": "/leads",
+            "appointments": "/appointments"
+        }
+    }
+
+
+@app.get("/token")
+def get_token(room_name: str = "ava-room", identity: str = None):
+    if not identity:
+        identity = f"user_{uuid4().hex[:6]}"
+        
+    api_key = os.environ.get("LIVEKIT_API_KEY")
+    api_secret = os.environ.get("LIVEKIT_API_SECRET")
+    
+    if not api_key or not api_secret:
+        return {"error": "LiveKit credentials not configured in server environment"}
+        
+    token = AccessToken(api_key, api_secret)
+    token.with_identity(identity)
+    
+    grants = VideoGrants(
+        room_join=True,
+        room=room_name
+    )
+    token.with_grants(grants)
+    
+    return {
+        "token": token.to_jwt(),
+        "url": os.environ.get("LIVEKIT_URL", "wss://your-project.livekit.cloud")
+    }
+
 @app.get("/properties", response_model=list[PropertyResponse])
 def get_properties(
     city: str = Query(None),
     max_price: float = Query(None),
     min_bedrooms: int = Query(None),
-    property_type: str = Query(None),       # ✅ New: filter by type (Apartment, Villa, etc.)
+    property_type: str = Query(None),
+    purpose: str = Query("buy"),
     db: Session = Depends(get_db)
 ):
     query_string = (
         "SELECT property_id, city, district, property_type, "
-        "built_up_area_sqft, price_inr, bedrooms "
-        "FROM properties WHERE 1=1"
+        "built_up_area_sqft, price_inr, monthly_rental_estimate_inr, bedrooms, status "
+        "FROM properties WHERE LOWER(status) = 'available'"
     )
     params = {}
 
@@ -89,7 +148,10 @@ def get_properties(
         params["city"] = city
 
     if max_price:
-        query_string += " AND price_inr <= :max_price"
+        if purpose.lower() == "rent":
+            query_string += " AND monthly_rental_estimate_inr <= :max_price"
+        else:
+            query_string += " AND price_inr <= :max_price"
         params["max_price"] = max_price
 
     if min_bedrooms:
@@ -113,7 +175,9 @@ def get_properties(
             "property_type": row[3],
             "built_up_area_sqft": row[4],
             "price_inr": row[5],
-            "bedrooms": row[6],
+            "monthly_rental_estimate_inr": row[6],
+            "bedrooms": row[7],
+            "status": row[8],
         })
 
     return properties_list
@@ -127,9 +191,19 @@ def create_lead(lead_data: LeadCreate):
     return full_lead
 
 
+@app.get("/leads", response_model=list[Lead])
+def get_leads():
+    return list(db_leads.values())
+
+
 @app.post("/appointments", response_model=Appointment)
 def schedule_appointment(appointment_data: AppointmentCreate):
     new_id = uuid4()
     full_appointment = Appointment(id=new_id, **appointment_data.model_dump())
     db_appointments[new_id] = full_appointment
     return full_appointment
+
+
+@app.get("/appointments", response_model=list[Appointment])
+def get_appointments():
+    return list(db_appointments.values())
