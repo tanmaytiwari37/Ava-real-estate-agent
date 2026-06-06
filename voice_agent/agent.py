@@ -16,7 +16,7 @@ vad = silero.VAD.load()
 crm_tools = RealEstateCRMTools()
 server = AgentServer(
     num_idle_processes=0,
-    load_threshold=99999.0,
+    load_threshold=999999.0,
 )
 
 
