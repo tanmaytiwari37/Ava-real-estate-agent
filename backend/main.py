@@ -1,4 +1,5 @@
 import os
+import socket
 from datetime import datetime
 from uuid import UUID, uuid4
 from typing import Optional
@@ -9,6 +10,15 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from dotenv import load_dotenv
 from livekit.api import AccessToken, VideoGrants
+
+# Force socket to resolve ONLY IPv4 for Neon host to prevent local network IPv6 routing issues on developer machine
+orig_getaddrinfo = socket.getaddrinfo
+def getaddrinfo_ipv4(host, port, family=0, type=0, proto=0, flags=0):
+    if host and "neon.tech" in host:
+        return orig_getaddrinfo(host, port, socket.AF_INET, type, proto, flags)
+    return orig_getaddrinfo(host, port, family, type, proto, flags)
+
+socket.getaddrinfo = getaddrinfo_ipv4
 
 # ==========================================
 # 💾 DATABASE SETUP & dotenv loading
@@ -30,7 +40,13 @@ app.add_middleware(
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    pool_recycle=300,
+    pool_size=5,
+    max_overflow=10
+)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db():
