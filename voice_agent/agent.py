@@ -14,7 +14,10 @@ load_dotenv(os.path.join(current_dir, ".env"), override=True)
 # ── Shared singletons ──────────────────────────────────────────────────────────
 vad = silero.VAD.load()
 crm_tools = RealEstateCRMTools()
-server = AgentServer()
+server = AgentServer(
+    num_idle_processes=0,
+    load_threshold=999.0,
+)
 
 
 # ── Agent ──────────────────────────────────────────────────────────────────────
