@@ -6,6 +6,11 @@ import time
 def main():
     # 1. Start the FastAPI backend server
     port = os.environ.get("PORT", "8000")
+    
+    # Dynamically inject the correct local backend URL with the correct port
+    os.environ["BACKEND_URL"] = f"http://127.0.0.1:{port}"
+    print(f"Set BACKEND_URL to http://127.0.0.1:{port} for agent worker")
+    
     print(f"🚀 Starting FastAPI backend on port {port}...")
     
     # Run uvicorn as a subprocess
